@@ -1,1 +1,5 @@
+# This is to protect your files even if the directory name is changed
 .tmp
+.temp
+tmp
+temp
