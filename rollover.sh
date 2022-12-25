@@ -1,8 +1,11 @@
 #!/bin/sh
 
+HOME_DIR=~/
 REPO_STORE=~/.rollover
 BACKUP_STORE=./.tmp
 CONFIG_STORE=./include.txt
+ROLLOVER_GIT_DIR=.rgit
+CURRENT_REPO="$(head -1 $REPO_STORE)"
 
 show_menu() {
     echo "
@@ -15,10 +18,10 @@ show_menu() {
  |_|  \_\___/|_|_|\___/ \_/ \___|_|   
                                       
   
- 1. Set repository
- 2. View current repository
- 3. Create backup
- 4. Restore backup
+ [1] Set repository
+ [2] View current repository
+ [3] Create a backup
+ [4] Restore a backup
 
 
  Type exit to quit program
@@ -27,7 +30,6 @@ show_menu() {
 
 view_repo() {
     if [ -f "$REPO_STORE" ]; then
-        CURRENT_REPO="$(head -1 $REPO_STORE)"
         echo "Current repository: ${CURRENT_REPO}"
     else
         echo "No repository set."
@@ -48,6 +50,24 @@ set_repo() {
     echo "${NEW_REPOSITORY} has been set as your default rollover repository"
 }
 
+create_clean_temp() {
+    if ! [[ -d $BACKUP_STORE ]]; then
+        mkdir $BACKUP_STORE
+        cd $BACKUP_STORE
+        {
+            git init
+            mv .git $ROLLOVER_GIT_DIR
+            git --git-dir=$ROLLOVER_GIT_DIR remote add origin $CURRENT_REPO
+        }
+        cd ..
+    else
+        cp -r $BACKUP_STORE/$ROLLOVER_GIT_DIR ./$ROLLOVER_GIT_DIR
+        rm -rf $BACKUP_STORE
+        mkdir $BACKUP_STORE
+        mv ./$ROLLOVER_GIT_DIR $BACKUP_STORE/$ROLLOVER_GIT_DIR
+    fi
+}
+
 create_backup() {
    echo "[*] Scanning files..." 
    backup_arr=()
@@ -56,17 +76,17 @@ create_backup() {
       relative_path=~/$line
       [[ -e $relative_path ]] && backup_arr+=($line)
    done < $CONFIG_STORE 
+  
    echo "[*] ${#backup_arr[*]} files/directories will be backed up:\n"
-   for target in ${backup_arr[*]}
-    do
+   for target in ${backup_arr[*]}; do
         echo " $target"
     done
     
     echo "\n"
 
     while true; do
-        read -p ">> Continue? (Y/N) " CONFIRM_BACKUP
-        case "$CONFIRM_BACKUP" in
+        read -p ">> Continue? (Y/N) " CONFIRM
+        case "$CONFIRM" in
             [yY])
                 break
                 ;;
@@ -76,15 +96,55 @@ create_backup() {
                 ;;
         esac
     done
-    if ! [[ -d $BACKUP_STORE ]]; then
-        mkdir $BACKUP_STORE
-    else
-        rm -rf $BACKUP_STORE/*
+
+    create_clean_temp
+
+    echo "\n[*] Copying targets"
+    
+    for target in ${backup_arr[*]}; do
+        target_path=~/$target
+        dest_path=$BACKUP_STORE/$target
+        if [[ -f $target_path ]]; then
+            cp $target_path $dest_path
+        else
+            cp -r $target_path $dest_path
+        fi
+    done
+
+    if ! [ $? -eq 0 ]; then
+        echo "\n[x] Failed to copy!"
+        exit 1
     fi
+
+    echo "\n[*] Saving backup to remote repository"
+
+    timestamp=$(date +"%Y-%m-%d %T")
+    cd $BACKUP_STORE 
+    {
+        echo "${ROLLOVER_GIT_DIR}" > .gitignore
+        git --git-dir=$ROLLOVER_GIT_DIR remote set-url origin $CURRENT_REPO
+        git --git-dir=$ROLLOVER_GIT_DIR branch -m main
+        git --git-dir=$ROLLOVER_GIT_DIR add .
+        git --git-dir=$ROLLOVER_GIT_DIR commit -m "[ROLLOVER] Added backup $timestamp"
+        git --git-dir=$ROLLOVER_GIT_DIR push --force || git --git-dir=$ROLLOVER_GIT_DIR push -u origin main --force
+        # Force is used because from time to time there will be an issue with Git since files will be created and deleted from time to time as you update your include.txt file
+
+        if [ $? -eq 0 ]; then
+            echo "\n[*] Backup $timestamp saved successfully!"
+        else
+            echo "\n[x] Failed to save backup $timestamp"
+        fi
+    }
+    cd ..
+    exit 0
 }
 
 restore_backup() {
-    echo "Restore backup"
+    echo "\n[1] Restore last backup\n[2] Restore from commit hash"
+    while true; do
+        read -p "Type the corresponding number to choose how to restore backup: " RESTORE_OPTION
+    done
+    messages=$(git log -n 5 --pretty=%B)
 }
 
 execute() {

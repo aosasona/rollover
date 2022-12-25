@@ -1,6 +1,5 @@
 .bash_profile
 .bashrc
-.fig
 .gitconfig
 .gitignore
 .iterm2

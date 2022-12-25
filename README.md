@@ -1,6 +1,6 @@
 # Rollover
 
-Rollover allows you to backup your configs and scripts to your Github/Gitlab automatucally using a pre-specified list.
+Rollover allows you to backup your configs and scripts to your Github/Gitlab automatically using a pre-specified list.
 
 ## Getting Started
 
