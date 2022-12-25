@@ -1,0 +1,14 @@
+.bash_profile
+.bashrc
+.fig
+.gitconfig
+.gitignore
+.iterm2
+.npmrc
+.rollover
+.ssh
+.tmux.conf
+.vim
+.yarnrc
+.zshenv
+.zshrc
