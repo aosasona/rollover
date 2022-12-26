@@ -66,6 +66,15 @@ create_clean_temp() {
         mkdir $BACKUP_STORE
         mv ./$ROLLOVER_GIT_DIR $BACKUP_STORE/$ROLLOVER_GIT_DIR
     fi
+
+    # Set/update repository and prevent rgit from being pushed to the remote repository
+    cd $BACKUP_STORE
+    {
+        git --git-dir=$ROLLOVER_GIT_DIR remote set-url origin $CURRENT_REPO
+        git --git-dir=$ROLLOVER_GIT_DIR branch -m main
+        git --git-dir=$ROLLOVER_GIT_DIR pull origin main
+    }
+    cd ..
 }
 
 create_backup() {
@@ -121,9 +130,7 @@ create_backup() {
     timestamp=$(date +"%Y-%m-%d %T")
     cd $BACKUP_STORE 
     {
-        echo "${ROLLOVER_GIT_DIR}" > .gitignore
-        git --git-dir=$ROLLOVER_GIT_DIR remote set-url origin $CURRENT_REPO
-        git --git-dir=$ROLLOVER_GIT_DIR branch -m main
+        [[ -f .gitignore ]] && echo "${ROLLOVER_GIT_DIR}" > .gitignore
         git --git-dir=$ROLLOVER_GIT_DIR add .
         git --git-dir=$ROLLOVER_GIT_DIR commit -m "[ROLLOVER] Added backup $timestamp"
         git --git-dir=$ROLLOVER_GIT_DIR push --force || git --git-dir=$ROLLOVER_GIT_DIR push -u origin main --force
@@ -139,12 +146,44 @@ create_backup() {
     exit 0
 }
 
+checkout_remote() {
+    hash=$1
+
+    git --git-dir=$ROLLOVER_GIT_DIR fetch origin
+    git --git-dir=$ROLLOVER_GIT_DIR checkout HEAD
+}
+
 restore_backup() {
-    echo "\n[1] Restore last backup\n[2] Restore from commit hash"
+    create_clean_temp
+
+    echo "\n[1] Restore from last backup\n[2] Restore from commit hash"
+    
     while true; do
-        read -p "Type the corresponding number to choose how to restore backup: " RESTORE_OPTION
+        read -p ">> Type the corresponding number to choose how to restore backup: " RESTORE_OPTION
+        case "${RESTORE_OPTION}" in
+            1)
+                cd $BACKUP_STORE
+                {
+                    latest_commit=$(git --git-dir=$ROLLOVER_GIT_DIR rev-parse HEAD)
+                    checkout_remote $latest_commit
+                }
+                cd ..
+                break
+                ;;
+            2)
+                read -p ">> Enter the commit hash: " SELECTED_HASH
+                cd $BACKUP_STORE
+                {
+                    checkout_remote $SELECTED_HASH
+                }
+                cd ..
+                break
+                ;;
+            *)
+                echo "Invalid option!"
+                ;;
+        esac
     done
-    messages=$(git log -n 5 --pretty=%B)
 }
 
 execute() {
