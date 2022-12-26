@@ -147,13 +147,11 @@ create_backup() {
 }
 
 checkout_remote() {
-    hash=$1
-
-    git --git-dir=$ROLLOVER_GIT_DIR fetch origin
-    git --git-dir=$ROLLOVER_GIT_DIR checkout HEAD
+    git --git-dir=$ROLLOVER_GIT_DIR $1 origin/$1
 }
 
 restore_backup() {
+
     create_clean_temp
 
     echo "\n[1] Restore from last backup\n[2] Restore from commit hash"
@@ -162,12 +160,6 @@ restore_backup() {
         read -p ">> Type the corresponding number to choose how to restore backup: " RESTORE_OPTION
         case "${RESTORE_OPTION}" in
             1)
-                cd $BACKUP_STORE
-                {
-                    latest_commit=$(git --git-dir=$ROLLOVER_GIT_DIR rev-parse HEAD)
-                    checkout_remote $latest_commit
-                }
-                cd ..
                 break
                 ;;
             2)
@@ -184,6 +176,7 @@ restore_backup() {
                 ;;
         esac
     done
+
 }
 
 execute() {
