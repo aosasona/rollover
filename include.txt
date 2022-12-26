@@ -5,7 +5,6 @@
 .iterm2
 .npmrc
 .rollover
-.ssh
 .tmux.conf
 .vim
 .yarnrc

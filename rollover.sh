@@ -1,5 +1,7 @@
 #!/bin/sh
 
+! [[ -f "~/.rollover" ]] && touch ~/.rollover
+
 HOME_DIR=~/
 REPO_STORE=~/.rollover
 BACKUP_STORE=./.tmp
@@ -61,7 +63,7 @@ create_clean_temp() {
         }
         cd ..
     else
-        cp -r $BACKUP_STORE/$ROLLOVER_GIT_DIR ./$ROLLOVER_GIT_DIR
+        cp -R $BACKUP_STORE/$ROLLOVER_GIT_DIR ./$ROLLOVER_GIT_DIR
         rm -rf $BACKUP_STORE
         mkdir $BACKUP_STORE
         mv ./$ROLLOVER_GIT_DIR $BACKUP_STORE/$ROLLOVER_GIT_DIR
@@ -86,13 +88,11 @@ create_backup() {
       [[ -e $relative_path ]] && backup_arr+=($line)
    done < $CONFIG_STORE 
   
-   echo "[*] ${#backup_arr[*]} files/directories will be backed up:\n"
+   echo "[*] ${#backup_arr[*]} files/directories will be backed up:"
    for target in ${backup_arr[*]}; do
         echo " $target"
     done
     
-    echo "\n"
-
     while true; do
         read -p ">> Continue? (Y/N) " CONFIRM
         case "$CONFIRM" in
@@ -108,7 +108,7 @@ create_backup() {
 
     create_clean_temp
 
-    echo "\n[*] Copying targets"
+    echo "[*] Copying targets"
     
     for target in ${backup_arr[*]}; do
         target_path=~/$target
@@ -116,16 +116,16 @@ create_backup() {
         if [[ -f $target_path ]]; then
             cp $target_path $dest_path
         else
-            cp -r $target_path $dest_path
+            cp -R $target_path $dest_path
         fi
     done
 
     if ! [ $? -eq 0 ]; then
-        echo "\n[x] Failed to copy!"
+        echo "[x] Failed to copy!"
         exit 1
     fi
 
-    echo "\n[*] Saving backup to remote repository"
+    echo "[*] Saving backup to remote repository"
 
     timestamp=$(date +"%Y-%m-%d %T")
     cd $BACKUP_STORE 
@@ -137,9 +137,9 @@ create_backup() {
         # Force is used because from time to time there will be an issue with Git since files will be created and deleted from time to time as you update your include.txt file
 
         if [ $? -eq 0 ]; then
-            echo "\n[*] Backup $timestamp saved successfully!"
+            echo "[*] Backup $timestamp saved successfully!"
         else
-            echo "\n[x] Failed to save backup $timestamp"
+            echo "[x] Failed to save backup $timestamp"
         fi
     }
     cd ..
@@ -154,7 +154,8 @@ restore_backup() {
 
     create_clean_temp
 
-    echo "\n[1] Restore from last backup\n[2] Restore from commit hash"
+    echo "[1] Restore from last backup"
+    echo "[2] Restore from commit hash"
     
     while true; do
         read -p ">> Type the corresponding number to choose how to restore backup: " RESTORE_OPTION
@@ -176,7 +177,24 @@ restore_backup() {
                 ;;
         esac
     done
+	while read line; do
+	    relative_path=~/$line
+	    tmp_path=$BACKUP_STORE/$line
 
+	    if [[ -f "$tmp_path" ]]; then
+		    echo "[*] Copying ${line}..."
+		    [[ -f "$relative_path" ]] && rm -f $relative_path
+		    cp $tmp_path $relative_path
+	    fi
+
+	    if [[ -d "$tmp_path" ]]; then
+		    echo "[*] Copying ${line}..."
+		    [[ -d "$relative_path" ]] && rm -rf $relative_path
+		    cp -R $tmp_path $relative_path
+	    fi
+
+	done < $CONFIG_STORE
+	rm -rf $BACKUP_STORE
 }
 
 execute() {
