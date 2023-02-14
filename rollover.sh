@@ -132,7 +132,7 @@ create_backup() {
     {
         [[ -f .gitignore ]] && echo "${ROLLOVER_GIT_DIR}" > .gitignore
         git --git-dir=$ROLLOVER_GIT_DIR add .
-        git --git-dir=$ROLLOVER_GIT_DIR commit -m "[ROLLOVER] Added backup $timestamp"
+        git --git-dir=$ROLLOVER_GIT_DIR commit -m "[ROLLOVER] $timestamp"
         git --git-dir=$ROLLOVER_GIT_DIR push --force || git --git-dir=$ROLLOVER_GIT_DIR push -u origin main --force
         # Force is used because from time to time there will be an issue with Git since files will be created and deleted from time to time as you update your include.txt file
 

@@ -3,10 +3,10 @@
 .gitconfig
 .gitignore
 .iterm2
-.npmrc
 .rollover
 .tmux.conf
 .vim
-.yarnrc
 .zshenv
 .zshrc
+.zshrc.pre-oh-my-zsh
+.wezterm.lua
