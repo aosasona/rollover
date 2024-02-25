@@ -1,4 +1,6 @@
 #!/bin/sh
+#
+#TODO: extract colors to make them reusable and improve the code
 
 ! [[ -f "~/.rollover" ]] && touch ~/.rollover
 
@@ -12,14 +14,14 @@ CURRENT_REPO="$(head -1 $REPO_STORE)"
 show_menu() {
     echo "
 
-  _____       _ _                     
- |  __ \     | | |                    
- | |__) |___ | | | _____   _____ _ __ 
+  _____       _ _
+ |  __ \     | | |
+ | |__) |___ | | | _____   _____ _ __
  |  _  // _ \| | |/ _ \ \ / / _ \ '__|
- | | \ \ (_) | | | (_) \ V /  __/ |   
- |_|  \_\___/|_|_|\___/ \_/ \___|_|   
-                                      
-  
+ | | \ \ (_) | | | (_) \ V /  __/ |
+ |_|  \_\___/|_|_|\___/ \_/ \___|_|
+
+
  [1] Set repository
  [2] View current repository
  [3] Create a backup
@@ -70,7 +72,7 @@ create_clean_temp() {
     fi
 
     # Set/update repository and prevent rgit from being pushed to the remote repository
-    cd $BACKUP_STORE
+    cd $BACKUP_STORE || exit
     {
         git --git-dir=$ROLLOVER_GIT_DIR remote set-url origin $CURRENT_REPO
         git --git-dir=$ROLLOVER_GIT_DIR branch -m main
@@ -80,19 +82,19 @@ create_clean_temp() {
 }
 
 create_backup() {
-   echo "[*] Scanning files..." 
+   echo "[*] Scanning files..."
    backup_arr=()
    while read line; do
       [[ -z "${line// }" ]] && continue
-      relative_path=~/$line
+      relative_path=$HOME_DIR$line
       [[ -e $relative_path ]] && backup_arr+=($line)
-   done < $CONFIG_STORE 
-  
+   done < $CONFIG_STORE
+
    echo "[*] ${#backup_arr[*]} files/directories will be backed up:"
    for target in ${backup_arr[*]}; do
-        echo " $target"
+        printf " \e[95m%s\e[0m\n" "$target"
     done
-    
+
     while true; do
         read -p ">> Continue? (Y/N) " CONFIRM
         case "$CONFIRM" in
@@ -100,7 +102,7 @@ create_backup() {
                 break
                 ;;
             [nN])
-                echo "Cancelled!"
+                printf "\e[91mTerminating program :)\e[0m"
                 exit 0
                 ;;
         esac
@@ -109,10 +111,11 @@ create_backup() {
     create_clean_temp
 
     echo "[*] Copying targets"
-    
+
     for target in ${backup_arr[*]}; do
         target_path=~/$target
-        dest_path=$BACKUP_STORE/$target
+        filename="$(basename $target)"
+        dest_path=$BACKUP_STORE/$filename
         if [[ -f $target_path ]]; then
             cp $target_path $dest_path
         else
@@ -128,7 +131,7 @@ create_backup() {
     echo "[*] Saving backup to remote repository"
 
     timestamp=$(date +"%Y-%m-%d %T")
-    cd $BACKUP_STORE 
+    cd $BACKUP_STORE || exit
     {
         [[ -f .gitignore ]] && echo "${ROLLOVER_GIT_DIR}" > .gitignore
         git --git-dir=$ROLLOVER_GIT_DIR add .
@@ -137,9 +140,9 @@ create_backup() {
         # Force is used because from time to time there will be an issue with Git since files will be created and deleted from time to time as you update your include.txt file
 
         if [ $? -eq 0 ]; then
-            echo "[*] Backup $timestamp saved successfully!"
+            printf "\e[92m%s\e[0m\n" "[*] Backup $timestamp saved successfully!"
         else
-            echo "[x] Failed to save backup $timestamp"
+            printf "\e[91m%s\e[0m\n" "[x] Failed to save backup $timestamp"
         fi
     }
     cd ..
@@ -156,7 +159,7 @@ restore_backup() {
 
     echo "[1] Restore from last backup"
     echo "[2] Restore from commit hash"
-    
+
     while true; do
         read -p ">> Type the corresponding number to choose how to restore backup: " RESTORE_OPTION
         case "${RESTORE_OPTION}" in
